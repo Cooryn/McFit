@@ -1,4 +1,4 @@
-"""Small deterministic Chinese parser. Codex handles open language via reviewed JSON.
+"""Small deterministic Chinese parser. AI 助手 handles open language via reviewed JSON.
 
 This parser only proposes drafts. It never saves data or asserts user consent.
 """

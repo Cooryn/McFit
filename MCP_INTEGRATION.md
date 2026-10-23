@@ -1,14 +1,14 @@
 # McFit 与麦当劳 MCP 的集成
 
-McFit 是面向麦当劳中国单餐的营养搭配 Codex Skill。由 Codex 直接调用官方 MCP，Python 负责确定性营养计算、组合搜索和本地记录，避免依靠语言模型心算或虚构价格。
+McFit 是面向麦当劳中国单餐的营养搭配通用 AI Skill。由支持 MCP 的 AI 宿主直接调用官方 MCP，Python 负责确定性营养计算、组合搜索和本地记录，避免依靠语言模型心算或虚构价格。
 
 ## Server 与认证
 
 - 官方服务：`https://mcp.mcd.cn`
 - 协议：Streamable HTTP
-- 认证：Authorization Bearer，通过启动 Codex 的进程环境变量 `MCD_MCP_TOKEN` 提供。
+- 认证：Authorization Bearer，通过 AI 宿主的安全凭据设置或进程环境变量 `MCD_MCP_TOKEN` 提供。
 - 官方说明：[M-China/mcd-mcp-server](https://github.com/M-China/mcd-mcp-server)
-- 配置示例：[mcp-config.example.json](mcp-config.example.json)；Codex 实际使用用户级 `~/.codex/config.toml`，见下文。
+- 配置示例：[mcp-config.example.json](mcp-config.example.json)；不同宿主需要按照各自的配置规则设置认证，不能假设JSON占位符会自动展开。以下仅为Codex示例，它使用用户级 `~/.codex/config.toml`，见下文。
 
 ```toml
 [mcp_servers.mcdonalds]
@@ -33,7 +33,7 @@ enabled_tools = ["list-nutrition-foods", "order-list", "query-order"]
 
 ## 调用流程
 
-1. Codex读取Skill，提取本餐需求；如需身体档案，先展示摘要并取得确认。
+1. AI助手读取Skill，提取本餐需求；如需身体档案，先展示摘要并取得确认。
 2. 检查当前工具schema，通过本地白名单策略检查后，调用官方营养工具。
 3. 核对实际返回字段、单位、份量、来源时间及重复条目，将可核验数据映射至本地桥接JSON；无法确认的数据保持未知或暂停候选。
 4. 执行 `normalize-foods`、`nutrition-target`、`recommend`，在Python中计算总量、筛选硬限制并排序。真实全量目录超过当前30项限制时，需要明确缩小候选范围。
@@ -50,4 +50,4 @@ enabled_tools = ["list-nutrition-foods", "order-list", "query-order"]
 - 不获取定位或门店、不下单、不支付、不领券、不修改账号状态。当前响应无价格，无法承诺预算达标；历史订单金额不作为新餐报价。
 - 401停止并提示检查环境；429尊重Retry-After并有限重试；超时使用标明日期的缓存或停止查询。不会把陈旧数据称为实时数据。
 
-本项目使用Codex开发，没有使用WorkBuddy，因此不提供虚构的workbuddy.md或申请相关使用资格。项目输出仅作单餐参考，不构成专业诊疗或营养处方；已知实现缺口保留在公开审查报告中。
+开发时使用了Codex，但技能和Python运行时不依赖Codex，可按[跨助手说明](.agents/skills/mcfit/references/host-compatibility.md)迁移。已测试导出包在仓库外独立运行；其他AI产品的导入、权限和MCP配置尚未逐一联调。没有使用WorkBuddy，因此不提供虚构的workbuddy.md或申请相关使用资格。项目输出仅作单餐参考，不构成专业诊疗或营养处方。

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mcfit"
 version = "0.1.0"
-description = "McDonald's China single-meal nutrition skill; local deterministic helpers"
+description = "Portable AI skill for McDonald's China single-meal nutrition and local intake records"
 requires-python = ">=3.11"
 dependencies = []
 

@@ -1,4 +1,4 @@
-"""Strict local bridge v1; Codex maps inspected tool output to this contract."""
+"""Strict local bridge v1; AI 助手 maps inspected tool output to this contract."""
 from dataclasses import asdict
 from models import FoodItem, ValidationError, METRICS, construct, number
 

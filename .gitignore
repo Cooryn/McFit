@@ -10,5 +10,6 @@ __pycache__/
 data/
 private/
 exports/
+dist/
 *.private.json
 config.toml

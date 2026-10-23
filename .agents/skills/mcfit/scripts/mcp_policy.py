@@ -18,7 +18,7 @@ def failure(status, attempt=0, retry_after=None):
     if type(attempt) is not int or attempt < 0:
         raise ValidationError("重试次数无效")
     if status in (401, "missing_token"):
-        return {"retry":False, "message":"请检查启动 Codex 的进程环境 MCD_MCP_TOKEN，勿粘贴 Token 到聊天或仓库。"}
+        return {"retry":False, "message":"请检查AI 宿主的凭据配置或进程环境变量 MCD_MCP_TOKEN，勿粘贴 Token 到聊天或仓库。"}
     if status == 429:
         if retry_after is not None:
             number(retry_after,"Retry-After")
