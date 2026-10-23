@@ -1,89 +1,86 @@
 # McFit
 
-可执行的麦当劳中国单餐营养 Codex Skill：中文建档/改参、四类目标估算、三种排序、硬约束配餐、替换/新增方案、只读MCP编排、SQLite待确认及已确认摄入、日周月统计和导出删除。仅个人学习、非商业用途，不是官方产品。
+## 项目介绍
 
-目标用户：希望依据官方营养信息选择麦当劳单餐、比较可核实的参考预算，或记录本人已确认摄入的一般健康成年人。特殊健康状况不适用自动营养指导。
+McFit 是面向麦当劳中国单餐的 Codex Skill，帮助用户结合营养目标、餐品偏好和可核实的参考预算选择一餐。
 
-当前为开发预览版：51项离线测试通过，已完成一次真实营养MCP查询；真实数据解析、跨工具订单去重等仍有已知缺口，见[AUDIT.md](AUDIT.md)，尚非全部需求验收通过的版本。
+- 支持增肌、减脂、维持体重和体态重塑四类目标，以 Python 确定性计算估算单餐需求。
+- 提供营养优先、价格优先和均衡推荐三种策略，支持餐品排除、方案替换和新增候选。
+- 使用麦当劳官方 MCP 查询营养；价格无法核实时明确标注，不承诺满足预算。
+- 经用户确认后保存本地档案和实际摄入记录，支持日、周、月统计与数据导出。
+
+项目目前为开发预览版：已完成真实 MCP 营养查询，本地计算和记录流程可离线运行，真实数据到推荐的完整适配仍在完善，已知问题见 [审查报告](AUDIT.md)。仅供个人学习与单餐参考，非麦当劳官方产品，不提供下单、支付或全天饮食计划。
+
+## 安装方法
+
+需要 Python 3.11+、Git 和支持项目级 Skill 的 Codex。核心脚本只依赖 Python 标准库。
+
+克隆项目并创建虚拟环境：
+
+```bash
+git clone https://github.com/Cooryn/McFit.git
+cd McFit
+python -m venv .venv
+```
+
+Windows PowerShell 检查命令入口：
+
+```powershell
+.\.venv\Scripts\python.exe .agents/skills/mcfit/scripts/cli.py --help
+```
+
+Linux/macOS 使用：
+
+```bash
+.venv/bin/python .agents/skills/mcfit/scripts/cli.py --help
+```
+
+在 Codex 中打开项目目录，加载 `.agents/skills/mcfit/SKILL.md`；若技能未显示，请新建会话。
+
+使用真实营养查询前，到 [麦当劳 MCP 开放平台](https://open.mcd.cn/mcp) 获取 Token，并在启动 Codex 的进程环境中设置 `MCD_MCP_TOKEN`。将以下配置添加到用户级 `~/.codex/config.toml`：
+
+```toml
+[mcp_servers.mcdonalds]
+url = "https://mcp.mcd.cn"
+bearer_token_env_var = "MCD_MCP_TOKEN"
+enabled_tools = ["list-nutrition-foods", "order-list", "query-order"]
+```
+
+`bearer_token_env_var` 填写环境变量名，真实 Token 不写入仓库。配置后重新启动 Codex，详细步骤见 [MCP 接入说明](.agents/skills/mcfit/references/mcp-integration.md)。用户资料默认保存在系统用户数据目录，也可通过 `MCFIT_DATA_DIR` 指定私有目录。
 
 ## 使用示例
 
-在安装并连接麦当劳MCP后，可在Codex中输入：
+在 Codex 对话中调用：
 
 ```text
+$mcfit 帮我建立档案：我25岁，175cm，65kg，想增肌，日常久坐，每周力量训练3次。
+
 $mcfit 推荐一顿麦当劳午餐，热量不超过650 kcal，蛋白质至少30g。
-$mcfit 预算25元，不要薯条；如果价格无法核实，请明确说明。
+
+$mcfit 预算25元，不要薯条；价格无法核实时请明确说明。
+
 $mcfit 第二套替换饮料，保留其他限制。
+
+$mcfit 再给我两套不同的方案。
+
 $mcfit 统计这个月我已确认记录的麦当劳蛋白质和已知金额。
 ```
 
-首次建档会先提取必要参数、核对单位并请求确认。历史订单不会自动读取；订单也不会自动计入摄入。没有真实MCP时，可运行下方合成数据演示，不代表真实餐品或价格。
+首次建档会补齐必要信息、请用户选择公式参数，并在确认后保存。读取历史订单需要明确授权；只有本人确认实际食用的内容才计入摄入记录。统计仅覆盖已记录的麦当劳餐品。
 
-## 安装与运行
-
-Python 3.11+。核心代码只用标准库；pytest、PyYAML仅用于测试及Skill校验。
+无需连接 MCP，也可运行合成数据演示：
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e '.[test]'
-.\.venv\Scripts\python.exe .agents/skills/mcfit/scripts/cli.py --help
-.\.venv\Scripts\python.exe -m pytest -q --basetemp private/pytest-local
 .\.venv\Scripts\python.exe .agents/skills/mcfit/scripts/cli.py smoke --input tests/fixtures/synthetic.json
 ```
 
-Linux/macOS将`.venv\Scripts\python.exe`替换为`.venv/bin/python`。`--basetemp`仅指向专用测试目录，pytest会清理它，不要指向个人数据目录。
+演示中的档案、餐品和价格均为合成测试数据，不代表真实麦当劳信息。Linux/macOS 将 Python 路径替换为 `.venv/bin/python`。
 
-在本项目启动Codex即可发现`.agents/skills/mcfit/SKILL.md`，用`$mcfit 推荐一顿麦当劳午餐`。本次开发中该Skill已进入应用技能列表。若刚复制到其他项目未发现，请重新开启会话。
+## 目标用户
 
-每条CLI命令支持`--input <UTF-8 JSON文件>`，省略为stdin。数据库目录由`--data-dir`、`MCFIT_DATA_DIR`、系统用户目录依次决定。Windows默认`%LOCALAPPDATA%/McFit`；Linux默认`$XDG_DATA_HOME/mcfit`或`~/.local/share/mcfit`。不要把真实身体/订单数据写到项目。测试只用synthetic:true的合成资料。
+- 希望结合热量、蛋白质等目标选择麦当劳单餐的一般健康成年人。
+- 有明确餐品偏好，希望比较不同组合及可核实参考预算的用户。
+- 希望维护本人已确认的麦当劳饮食记录、查看已知营养和金额统计的用户。
+- 希望学习 Codex Skill、只读 MCP 编排与确定性营养计算的开发者。
 
-## 入口与说明
-
-- [正式Skill](.agents/skills/mcfit/SKILL.md)：工具选择及对话路由。
-- [本地JSON契约](.agents/skills/mcfit/references/contracts.md)：所有命令参数和数据模型。
-- [工作流](.agents/skills/mcfit/references/workflows.md)：建档、推荐、替换、待确认、记录和统计。
-- [营养假设](.agents/skills/mcfit/references/nutrition-method.md)：公式来源、可配置常量、权重和安全范围。
-- [MCP配置](.agents/skills/mcfit/references/mcp-integration.md)：用户级TOML、Windows/Ubuntu环境变量、只读白名单、缓存和错误降级。
-
-核心命令：parse-profile、save-profile、get-profile、parse-request、nutrition-target、normalize-foods、recommend、replacement-request、more-request、prepare-order-import、pending、confirm-consumption、retract-consumption、report、export（JSON/CSV）、delete、cache-put/get/clear-cache、mcp-policy/error。档案更新保存完整合并结果；记录修改用replace:true。
-
-## 数据与接口边界
-
-2026-10-23已核对[Codex Skill规范](https://developers.openai.com/codex/skills)、[MCP配置规范](https://developers.openai.com/codex/mcp)和[麦当劳官方仓库](https://github.com/M-China/mcd-mcp-server)。开发初期服务不可用；随后已通过 `list-nutrition-foods({})` 完成真实只读营养查询，返回160行文本。**尚未完成真实数据规范化到推荐的端到端验收，未查询真实历史订单。** 详细工具、实际格式和业务价值见[MCP_INTEGRATION.md](MCP_INTEGRATION.md)。
-
-真实接入需用户在启动Codex的进程环境提供MCD_MCP_TOKEN；代码不读取或保存Token。Python负责确定性本地计算，Codex直接调用已注册工具。订单读取须明确同意。菜单/计价依赖门店，因此不调用、不定位，价格默认未知；历史实付不能复用作新餐报价。
-
-价格未知方案与合规结果分开；严格预算不放宽。营养未知不当零；未审核匹配不用于可靠汇总。过敏原/交叉接触无法核实即排除。未成年人、妊娠哺乳、疾病治疗饮食、饮食障碍风险不使用常规自动指导；极端限制拒绝。自然语言规则覆盖常见表达，复杂语义由Codex核对后输入结构化JSON，不能把规则解析器当通用理解模型。
-
-不实现其他品牌、全天食谱、门店/库存/地址管理、购买支付、账号修改、长期体重趋势或后台监控。单个订单目前一个摄入时间；不同条目/分食份额可拆选，同订单跨时间分次需人工补记并去重。候选超过30项要求缩小范围。SQLite为本地明文，依赖操作系统账户权限；删除不包括用户导出副本和系统备份。
-
-## 文件树
-
-```text
-.agents/skills/mcfit/
-  SKILL.md
-  references/{contracts,mcp-integration,nutrition-method,workflows,output-examples}.md
-  scripts/
-    cli.py models.py language.py nutrition.py normalize.py optimizer.py
-    mcp_policy.py orders.py storage.py reporting.py
-tests/
-  fixtures/synthetic.json
-  conftest.py test_nutrition.py test_normalize.py test_optimizer.py
-  test_storage.py test_orders_and_workflows.py
-pyproject.toml
-.gitignore
-README.md
-VALIDATION.md
-AUDIT.md
-MCP_INTEGRATION.md
-mcp-config.example.json
-CONTEST_DECLARATION.md
-```
-
-开发临时目录private、测试数据库、.venv、缓存均被忽略。不要提交个人导出、用户config.toml或.env。详细执行结果与验收映射见[VALIDATION.md](VALIDATION.md)。
-
-## 活动提交材料
-
-按[官方活动规则](https://github.com/M-China/mcd-developer-innovation-challenge/blob/main/activityGuidelines.md)提供README、官方原样参赛声明、MCP集成说明和脱敏JSON示例。JSON中的 `${MCD_MCP_TOKEN}` 仅为环境变量占位符，是否自动展开取决于宿主；Codex应使用上文链接中的TOML配置，不能直接把JSON当成Codex配置文件。
-
-仓库公开发布与提交报名Issue是两个步骤。请阅读官方规则及[参赛声明](CONTEST_DECLARATION.md)，并按实际资格提交报名；代码测试通过或仓库公开不代表活动方已接受报名。不提供WorkBuddy使用记录，因为本项目由Codex辅助开发。
+营养结果是估算，不构成医疗诊断或专业营养处方。未成年人、妊娠或哺乳期、存在饮食障碍风险或需要疾病治疗饮食的用户，不适用常规自动营养指导；过敏原信息不足时不能保证餐品安全。
